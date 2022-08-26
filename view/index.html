@@ -1,0 +1,111 @@
+<script src="https://unpkg.com/vue@3"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+<div id="app">
+  <form id="form">
+      <div>
+          <input ref="file" type="file" v-on:change="upload()" style="display: none" />
+          <button type="button" @click="$refs.file.click()">檔案上傳</button>
+      </div>
+  </form>
+  <table class="table">
+    <thead>
+      <tr>
+        <th scope="col">fileName</th>
+        <th scope="col">Download</th>
+        <th scope="col">Delete</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr v-for="file in file_list" :key="file.name">
+        <td>{{file.name}}</td>
+        <td><button type="submit" @click="file_download(file.name)">下載檔案</button></td>
+        <td><button type="submit" @click="file_delete(file.name)">刪除檔案</button></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+  const { createApp } = Vue
+
+  createApp({
+    data() {
+      return {
+        file_list: [],
+        download:''
+      }
+    },
+    mounted() {
+      this.get_file_list();
+    },
+    methods: {
+      get_file_list: function () {
+        axios
+          .get('/file')
+          .then(res => {
+            let result = res.data;
+            this.file_list = [];
+            for ( let i = 0; i < result.length; ++i) {
+                this.file_list.push({
+                    name:result[i]
+                })
+            }
+          })
+          .catch(err => {
+            console.log(err);
+          })
+      },
+
+       upload:function (e) {
+        let file = this.file = this.$refs.file.files[0];
+        let formData = new FormData();
+        formData.append('file', file);
+        axios
+          .post('/file', formData)
+          .then(res => {
+            let result = res.data;
+            if (result.status) {
+                alert('上傳成功');
+            } else {
+                alert('不支援上傳該格式檔案');
+            }
+            this.get_file_list();
+          })
+          .catch(err =>{
+            console.log(err)
+          })
+      },
+
+      file_download: function (file) {
+        axios
+          .get('/file/' + file, {responseType: 'blob'})
+          .then(res => {
+            let url = window.URL.createObjectURL(new Blob([res.data]));
+            let link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', file);
+            document.body.appendChild(link);
+            link.click();
+            alert('下載開始');
+            this.get_file_list();
+          })
+          .catch(err =>{
+            console.log(err)
+          })
+      },
+
+      file_delete: function (file) {
+        axios
+          .delete('/file/' + file)
+          .then(res => {
+            alert('刪除成功');
+            this.get_file_list();
+          })
+          .catch(err =>{
+            console.log(err)
+          })
+      },
+    },
+  }).mount('#app')
+</script>
